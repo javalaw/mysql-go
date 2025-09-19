@@ -70,6 +70,7 @@ type Config struct {
 	InterpolateParams        bool // Interpolate placeholders into query string
 	MultiStatements          bool // Allow multiple statements in one query
 	ParseTime                bool // Parse time values to time.Time
+	ParseTimestampOnly       bool // Parse only timestamp values to time.Time (requires ParseTime=true)
 	RejectReadOnly           bool // Reject read-only connections
 
 	// unexported fields. new options should be come here.
@@ -173,6 +174,10 @@ func (cfg *Config) Clone() *Config {
 func (cfg *Config) normalize() error {
 	if cfg.InterpolateParams && cfg.Collation != "" && unsafeCollations[cfg.Collation] {
 		return errInvalidDSNUnsafeCollation
+	}
+
+	if cfg.ParseTimestampOnly && !cfg.ParseTime {
+		return errors.New("parseTimestampOnly requires parseTime to be true")
 	}
 
 	// Set default network if empty
@@ -344,6 +349,10 @@ func (cfg *Config) FormatDSN() string {
 
 	if cfg.ParseTime {
 		writeDSNParam(&buf, &hasParam, "parseTime", "true")
+	}
+
+	if cfg.ParseTimestampOnly {
+		writeDSNParam(&buf, &hasParam, "parseTimestampOnly", "true")
 	}
 
 	if cfg.timeTruncate > 0 {
@@ -594,6 +603,14 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 		case "parseTime":
 			var isBool bool
 			cfg.ParseTime, isBool = readBool(value)
+			if !isBool {
+				return errors.New("invalid bool value: " + value)
+			}
+
+		// time.Time parsing only for timestamp fields
+		case "parseTimestampOnly":
+			var isBool bool
+			cfg.ParseTimestampOnly, isBool = readBool(value)
 			if !isBool {
 				return errors.New("invalid bool value: " + value)
 			}

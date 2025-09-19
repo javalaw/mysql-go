@@ -39,6 +39,7 @@ type mysqlConn struct {
 	sequence         uint8
 	compressSequence uint8
 	parseTime        bool
+	parseTimestampOnly bool
 	compress         bool
 
 	// for context support (Go 1.8+)

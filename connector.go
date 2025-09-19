@@ -86,6 +86,7 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 		connector:        c,
 	}
 	mc.parseTime = mc.cfg.ParseTime
+	mc.parseTimestampOnly = mc.cfg.ParseTimestampOnly
 
 	// Connect to Server
 	dctx := ctx

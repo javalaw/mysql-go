@@ -872,7 +872,11 @@ func (rows *textRows) readRow(dest []driver.Value) error {
 			fieldTypeDate,
 			fieldTypeNewDate:
 			if mc.parseTime {
-				dest[i], err = parseDateTime(buf, mc.cfg.Loc)
+				if mc.parseTimestampOnly && (rows.rs.columns[i].fieldType != fieldTypeTimestamp) {
+					dest[i] = buf
+				} else {
+					dest[i], err = parseDateTime(buf, mc.cfg.Loc)
+				}
 			} else {
 				dest[i] = buf
 			}
@@ -1413,7 +1417,27 @@ func (rows *binaryRows) readRow(dest []driver.Value) error {
 				}
 				dest[i], err = formatBinaryTime(data[pos:pos+int(num)], dstlen)
 			case rows.mc.parseTime:
-				dest[i], err = parseBinaryDateTime(num, data[pos:], rows.mc.cfg.Loc)
+				if rows.mc.parseTimestampOnly && (rows.rs.columns[i].fieldType != fieldTypeTimestamp) {
+					var dstlen uint8
+					if rows.rs.columns[i].fieldType == fieldTypeDate {
+						dstlen = 10
+					} else {
+						switch decimals := rows.rs.columns[i].decimals; decimals {
+						case 0x00, 0x1f:
+							dstlen = 19
+						case 1, 2, 3, 4, 5, 6:
+							dstlen = 19 + 1 + decimals
+						default:
+							return fmt.Errorf(
+								"protocol error, illegal decimals value %d",
+								rows.rs.columns[i].decimals,
+							)
+						}
+					}
+					dest[i], err = formatBinaryDateTime(data[pos:pos+int(num)], dstlen)
+				} else {
+					dest[i], err = parseBinaryDateTime(num, data[pos:], rows.mc.cfg.Loc)
+				}
 			default:
 				var dstlen uint8
 				if rows.rs.columns[i].fieldType == fieldTypeDate {
